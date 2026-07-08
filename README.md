@@ -606,7 +606,7 @@ applications, database-backed systems, and backend automation.
 
 If you find this project useful, consider giving the repositories a ⭐.
 
-::: {align="center"}
+
 ### Built with ☕ Java, 🌱 Spring Boot, ⚛️ React and 🐘 PostgreSQL
 
 **Schedule responsibly. Personalize thoughtfully. Track clearly.**
