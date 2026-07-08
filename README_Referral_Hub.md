@@ -1,4 +1,4 @@
-::: {align="center"}
+
 # 🚀 Referral Hub
 
 ### Automated Job Outreach & Referral Management Platform
