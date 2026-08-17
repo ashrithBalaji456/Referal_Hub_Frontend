@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { campaignApi, templateApi, resumeApi, recruiterApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 import { 
   Plus, 
   Edit, 
@@ -12,6 +13,15 @@ import {
   Briefcase
 } from 'lucide-react';
 
+const AVAILABLE_GROUPS = [
+  { id: 'HR', label: 'HR / Recruiters' },
+  { id: 'LEAD', label: 'Leads / Managers' },
+  { id: 'BPO', label: 'BPO Recruiters' },
+  { id: 'SALES', label: 'Sales / BDM Recruiters' },
+  { id: 'TECHNICAL', label: 'Technical Recruiters' },
+  { id: 'NON_IT', label: 'Non-IT Recruiters' },
+];
+
 export default function Campaigns({ showToast }) {
   const [campaigns, setCampaigns] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -19,6 +29,20 @@ export default function Campaigns({ showToast }) {
   const [recruiters, setRecruiters] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const handleToggleGroup = (groupId) => {
+    const current = formData.targetTitleGroup ? formData.targetTitleGroup.split(',').map(g => g.trim()).filter(Boolean) : [];
+    let newGroups;
+    if (current.includes(groupId)) {
+      newGroups = current.filter(g => g !== groupId);
+    } else {
+      newGroups = [...current.filter(g => g !== 'ALL'), groupId];
+    }
+    if (newGroups.length === 0) {
+      newGroups = ['ALL'];
+    }
+    setFormData({ ...formData, targetTitleGroup: newGroups.join(',') });
+  };
+  
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCampaign, setCurrentCampaign] = useState(null);
@@ -27,6 +51,8 @@ export default function Campaigns({ showToast }) {
     templateId: '',
     resumeId: '',
     enabled: false,
+    targetSet: '',
+    targetTitleGroup: 'ALL',
   });
 
   // Preview & Trigger Modals
@@ -73,6 +99,8 @@ export default function Campaigns({ showToast }) {
       templateId: templates[0]?.id || '',
       resumeId: resumes.find(r => r.active)?.id || resumes[0]?.id || '',
       enabled: false,
+      targetSet: '',
+      targetTitleGroup: 'ALL',
     });
     setIsModalOpen(true);
   };
@@ -84,6 +112,8 @@ export default function Campaigns({ showToast }) {
       templateId: camp.templateId,
       resumeId: camp.resumeId,
       enabled: camp.enabled,
+      targetSet: camp.targetSet !== null && camp.targetSet !== undefined ? camp.targetSet.toString() : '',
+      targetTitleGroup: camp.targetTitleGroup || 'ALL',
     });
     setIsModalOpen(true);
   };
@@ -118,12 +148,16 @@ export default function Campaigns({ showToast }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      targetSet: formData.targetSet === '' ? null : parseInt(formData.targetSet),
+    };
     try {
       if (currentCampaign) {
-        await campaignApi.update(currentCampaign.id, formData);
+        await campaignApi.update(currentCampaign.id, payload);
         showToast('Campaign updated successfully');
       } else {
-        await campaignApi.create(formData);
+        await campaignApi.create(payload);
         showToast('Campaign created successfully');
       }
       setIsModalOpen(false);
@@ -195,8 +229,37 @@ export default function Campaigns({ showToast }) {
     }
   };
 
+  const templateOptions = templates.map(t => ({
+    value: t.id.toString(),
+    label: t.templateName
+  }));
+
+  const resumeOptions = resumes.map(r => ({
+    value: r.id.toString(),
+    label: `${r.originalFilename} ${r.active ? '(Active)' : ''}`
+  }));
+
+  const targetSetOptions = [
+    { value: '', label: 'All Sets (Irrespective)' },
+    { value: '1', label: 'Set 1' },
+    { value: '2', label: 'Set 2' },
+    { value: '3', label: 'Set 3' },
+    { value: '4', label: 'Set 4' },
+    { value: '5', label: 'Set 5' }
+  ];
+
+  const batchOptions = [
+    { value: 10, label: 'First 10 Recruiters' },
+    { value: 30, label: 'First 30 Recruiters' },
+    { value: 40, label: 'First 40 Recruiters' },
+    { value: 50, label: 'First 50 Recruiters' },
+    { value: 100, label: 'First 100 Recruiters' },
+    { value: 10000, label: 'All Eligible Recruiters' }
+  ];
+
   return (
-    <div className="space-y-6 animate-slide-in">
+    <>
+      <div className="space-y-6 animate-slide-in">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white mb-1">Campaign Management</h2>
@@ -246,6 +309,16 @@ export default function Campaigns({ showToast }) {
                     <span>Template: <strong className="text-slate-300">{camp.templateName}</strong></span>
                     <span className="text-slate-600">|</span>
                     <span>Resume: <strong className="text-slate-300">{camp.resumeFilename}</strong></span>
+                    <span className="text-slate-600">|</span>
+                    <span>Targeting Set: <strong className="text-slate-300">{camp.targetSet ? `Set ${camp.targetSet}` : 'All Sets'}</strong></span>
+                    <span className="text-slate-600">|</span>
+                    <span>Groups: <strong className="text-slate-300">
+                      {camp.targetTitleGroup 
+                        ? camp.targetTitleGroup.split(',')
+                            .map(g => AVAILABLE_GROUPS.find(ag => ag.id === g.trim())?.label || (g.trim() === 'ALL' ? 'All Titles' : g.trim()))
+                            .join(', ')
+                        : 'All Titles'}
+                    </strong></span>
                   </div>
                 </div>
 
@@ -298,6 +371,7 @@ export default function Campaigns({ showToast }) {
           )}
         </div>
       )}
+      </div>
 
       {/* Campaign Form Modal */}
       {isModalOpen && (
@@ -335,15 +409,13 @@ export default function Campaigns({ showToast }) {
                 {templates.length === 0 ? (
                   <p className="text-xs text-rose-400">No templates found. Add one first.</p>
                 ) : (
-                  <select 
+                  <CustomSelect
                     value={formData.templateId}
-                    onChange={(e) => setFormData({...formData, templateId: e.target.value})}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-200 focus:border-purple-600 transition-colors"
-                  >
-                    {templates.map(t => (
-                      <option key={t.id} value={t.id}>{t.templateName}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({...formData, templateId: val})}
+                    options={templateOptions}
+                    selectClassName="w-full py-2.5 text-sm"
+                    className="w-full"
+                  />
                 )}
               </div>
 
@@ -352,16 +424,48 @@ export default function Campaigns({ showToast }) {
                 {resumes.length === 0 ? (
                   <p className="text-xs text-rose-400">No resumes found. Upload one first.</p>
                 ) : (
-                  <select 
+                  <CustomSelect
                     value={formData.resumeId}
-                    onChange={(e) => setFormData({...formData, resumeId: e.target.value})}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-200 focus:border-purple-600 transition-colors"
-                  >
-                    {resumes.map(r => (
-                      <option key={r.id} value={r.id}>{r.originalFilename} {r.active ? '(Active)' : ''}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({...formData, resumeId: val})}
+                    options={resumeOptions}
+                    selectClassName="w-full py-2.5 text-sm"
+                    className="w-full"
+                  />
                 )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1.5">Target Contact Set</label>
+                  <CustomSelect
+                    value={formData.targetSet}
+                    onChange={(val) => setFormData({...formData, targetSet: val})}
+                    options={targetSetOptions}
+                    selectClassName="w-full py-2.5 text-sm"
+                    className="w-full font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 block mb-2">Target Title Groups</label>
+                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-900 border border-slate-850 rounded-xl">
+                  {AVAILABLE_GROUPS.map(group => {
+                    const current = formData.targetTitleGroup ? formData.targetTitleGroup.split(',').map(g => g.trim()) : [];
+                    const isChecked = current.includes(group.id);
+                    return (
+                      <label key={group.id} className="flex items-center gap-2 text-xs text-slate-300 font-semibold cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleGroup(group.id)}
+                          className="rounded border-slate-800 text-purple-600 focus:ring-0 focus:ring-offset-0 bg-slate-950 w-4 h-4 cursor-pointer"
+                        />
+                        {group.label}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -419,15 +523,17 @@ export default function Campaigns({ showToast }) {
               {recruiters.length === 0 ? (
                 <span className="text-xs text-slate-500 italic">No recruiters available</span>
               ) : (
-                <select 
+                <CustomSelect
                   value={selectedRecruiterId}
-                  onChange={(e) => setSelectedRecruiterId(e.target.value)}
-                  className="bg-transparent border-0 outline-none text-xs font-bold text-purple-400 focus:ring-0 w-full"
-                >
-                  {recruiters.map(r => (
-                    <option key={r.id} value={r.id} className="bg-slate-950 text-slate-200">{r.name} - {r.company} ({r.email})</option>
-                  ))}
-                </select>
+                  onChange={setSelectedRecruiterId}
+                  options={recruiters.map(r => ({
+                    value: r.id.toString(),
+                    label: `${r.name} - ${r.title || 'HR'} (${r.company})`
+                  }))}
+                  placeholder="Select recruiter profile..."
+                  selectClassName="bg-transparent border-0 outline-none text-xs font-bold text-purple-400 focus:ring-0 w-full min-w-0"
+                  className="w-full animate-none"
+                />
               )}
             </div>
 
@@ -515,33 +621,31 @@ export default function Campaigns({ showToast }) {
                   {recruiters.filter(r => r.status === 'ACTIVE').length === 0 ? (
                     <p className="text-xs text-rose-400">No active recruiters available to send.</p>
                   ) : (
-                    <select 
+                    <CustomSelect
                       value={selectedRecruiterId}
-                      onChange={(e) => setSelectedRecruiterId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-200 focus:border-purple-600 transition-colors"
-                    >
-                      {recruiters.filter(r => r.status === 'ACTIVE').map(r => (
-                        <option key={r.id} value={r.id}>{r.name} ({r.company})</option>
-                      ))}
-                    </select>
+                      onChange={setSelectedRecruiterId}
+                      options={recruiters.filter(r => r.status === 'ACTIVE').map(r => ({
+                        value: r.id.toString(),
+                        label: `${r.name} - ${r.title || 'HR'} (${r.company})`
+                      }))}
+                      placeholder="Select active recruiter contact..."
+                      selectClassName="w-full py-2.5 text-sm"
+                      className="w-full"
+                    />
                   )}
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-400 block mb-1.5">Batch Size Limit</label>
-                    <select 
+                    <CustomSelect
                       value={batchLimit}
-                      onChange={(e) => setBatchLimit(parseInt(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-200 focus:border-purple-600 transition-colors"
-                    >
-                      <option value="10">First 10 Recruiters</option>
-                      <option value="30">First 30 Recruiters</option>
-                      <option value="40">First 40 Recruiters</option>
-                      <option value="50">First 50 Recruiters</option>
-                      <option value="100">First 100 Recruiters</option>
-                      <option value="10000">All Eligible Recruiters</option>
-                    </select>
+                      onChange={setBatchLimit}
+                      options={batchOptions}
+                      placeholder="Select batch limit..."
+                      selectClassName="w-full py-2.5 text-sm"
+                      className="w-full"
+                    />
                   </div>
                   <div className="p-3 bg-slate-905 border border-slate-800 rounded-xl text-[10px] text-slate-400 leading-normal">
                     Batch outreach skips any recruiters who are set to <strong>Inactive</strong> or who have been contacted within the last <strong>30 days</strong>.
@@ -578,6 +682,6 @@ export default function Campaigns({ showToast }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

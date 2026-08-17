@@ -80,7 +80,8 @@ export default function Resumes({ showToast }) {
       loadResumes();
     } catch (err) {
       console.error(err);
-      showToast('Failed to delete resume', 'error');
+      const errorMsg = err.response?.data?.message || 'Failed to delete resume';
+      showToast(errorMsg, 'error');
     }
   };
 

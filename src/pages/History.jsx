@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { historyApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
+import CustomDatePicker from '../components/CustomDatePicker';
 import { 
   Search, 
   CheckCircle, 
   XCircle, 
-  Calendar,
   AlertCircle,
   Clock
 } from 'lucide-react';
@@ -12,6 +13,7 @@ import {
 export default function History({ showToast }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('latest');
 
   // Filters State
   const [filters, setFilters] = useState({
@@ -59,6 +61,7 @@ export default function History({ showToast }) {
       startDate: '',
       endDate: '',
     });
+    setSortBy('latest');
   };
 
   useEffect(() => {
@@ -66,6 +69,17 @@ export default function History({ showToast }) {
       loadHistory();
     }
   }, [filters.company]);
+
+  const statusOptions = [
+    { value: '', label: 'All Deliveries' },
+    { value: 'SUCCESS', label: 'Success Only' },
+    { value: 'FAILED', label: 'Failures Only' }
+  ];
+
+  const sortOptions = [
+    { value: 'latest', label: 'Latest First' },
+    { value: 'oldest', label: 'Oldest First' }
+  ];
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -75,7 +89,7 @@ export default function History({ showToast }) {
       </div>
 
       {/* Filter panel */}
-      <form onSubmit={handleSearchSubmit} className="bg-slate-950 border border-slate-800 rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <form onSubmit={handleSearchSubmit} className="bg-slate-950 border border-slate-800 rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Company Name</label>
           <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
@@ -92,41 +106,46 @@ export default function History({ showToast }) {
 
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Outreach Status</label>
-          <select 
+          <CustomSelect
             value={filters.status}
-            onChange={(e) => setFilters({...filters, status: e.target.value})}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs outline-none text-slate-200 focus:border-purple-600 transition-colors"
-          >
-            <option value="">All Deliveries</option>
-            <option value="SUCCESS">Success Only</option>
-            <option value="FAILED">Failures Only</option>
-          </select>
+            onChange={(val) => setFilters({...filters, status: val})}
+            options={statusOptions}
+            selectClassName="w-full py-2"
+            className="w-full block"
+          />
         </div>
 
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Start Date</label>
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
-            <Calendar className="h-4 w-4 text-slate-600" />
-            <input 
-              type="date" 
-              value={filters.startDate}
-              onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-              className="bg-transparent border-0 outline-none text-xs text-slate-300 w-full color-scheme-dark"
-            />
-          </div>
+          <CustomDatePicker
+            value={filters.startDate}
+            onChange={(val) => setFilters({...filters, startDate: val})}
+            placeholder="Select Start Date"
+            className="w-full block"
+            buttonClassName="w-full py-2"
+          />
         </div>
 
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">End Date</label>
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
-            <Calendar className="h-4 w-4 text-slate-600" />
-            <input 
-              type="date" 
-              value={filters.endDate}
-              onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-              className="bg-transparent border-0 outline-none text-xs text-slate-300 w-full color-scheme-dark"
-            />
-          </div>
+          <CustomDatePicker
+            value={filters.endDate}
+            onChange={(val) => setFilters({...filters, endDate: val})}
+            placeholder="Select End Date"
+            className="w-full block"
+            buttonClassName="w-full py-2"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Sort By</label>
+          <CustomSelect
+            value={sortBy}
+            onChange={setSortBy}
+            options={sortOptions}
+            selectClassName="w-full py-2"
+            className="w-full block"
+          />
         </div>
 
         <div className="flex gap-2">
@@ -157,48 +176,54 @@ export default function History({ showToast }) {
               No outreach history logs found matching these parameters.
             </div>
           ) : (
-            history.map((log) => {
-              const isSuccess = log.status === 'SUCCESS';
-              return (
-                <div 
-                  key={log.id} 
-                  className={`bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-slate-700 transition-colors`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-bold text-white text-sm">{log.recruiterName}</h3>
-                        <span className="text-xs text-slate-500">({log.recipientEmail})</span>
-                        <span className="text-slate-800 font-semibold">•</span>
-                        <span className="text-xs text-purple-400 font-medium">{log.recruiterCompany}</span>
+            [...history]
+              .sort((a, b) => {
+                const timeA = new Date(a.sentTimestamp).getTime();
+                const timeB = new Date(b.sentTimestamp).getTime();
+                return sortBy === 'latest' ? timeB - timeA : timeA - timeB;
+              })
+              .map((log) => {
+                const isSuccess = log.status === 'SUCCESS';
+                return (
+                  <div 
+                    key={log.id} 
+                    className={`bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-slate-700 transition-colors`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-white text-sm">{log.recruiterName}</h3>
+                          <span className="text-xs text-slate-500">({log.recipientEmail})</span>
+                          <span className="text-slate-800 font-semibold">•</span>
+                          <span className="text-xs text-purple-400 font-medium">{log.recruiterCompany}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-semibold pr-2">Subject: <span className="text-slate-300 font-normal">{log.subjectUsed}</span></p>
                       </div>
-                      <p className="text-xs text-slate-400 font-semibold pr-2">Subject: <span className="text-slate-300 font-normal">{log.subjectUsed}</span></p>
+
+                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
+                          isSuccess ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                        }`}>
+                          {isSuccess ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          {isSuccess ? 'Success' : 'Failed'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {new Date(log.sentTimestamp).toLocaleString()}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
-                        isSuccess ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-                      }`}>
-                        {isSuccess ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                        {isSuccess ? 'Success' : 'Failed'}
-                      </span>
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {new Date(log.sentTimestamp).toLocaleString()}</span>
-                    </div>
+                    {/* Error Diagnostic */}
+                    {!isSuccess && log.errorMessage && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
+                        <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Diagnostic Error Code</span>
+                          <p className="text-xs text-slate-300 mt-1 font-mono">{log.errorMessage}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Error Diagnostic */}
-                  {!isSuccess && log.errorMessage && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
-                      <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Diagnostic Error Code</span>
-                        <p className="text-xs text-slate-300 mt-1 font-mono">{log.errorMessage}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                );
+              })
           )}
         </div>
       )}

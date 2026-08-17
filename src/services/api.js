@@ -9,6 +9,44 @@ const api = axios.create({
   },
 });
 
+// Attach JWT token to all requests if present
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Redirect to login if token is expired or invalid (401 Unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('username');
+      localStorage.removeItem('email');
+      // If we are not already on the login page, redirect
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const authApi = {
+  login: (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+};
+
 export const recruiterApi = {
   getAll: () => api.get('/recruiters'),
   getById: (id) => api.get(`/recruiters/${id}`),
@@ -16,6 +54,15 @@ export const recruiterApi = {
   update: (id, data) => api.put(`/recruiters/${id}`, data),
   delete: (id) => api.delete(`/recruiters/${id}`),
   updateStatus: (id, status) => api.patch(`/recruiters/${id}/status`, null, { params: { status } }),
+  importCsv: (formData) => api.post('/recruiters/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  exportCsv: (setNumber) => api.get('/recruiters/export', {
+    params: setNumber ? { setNumber } : {},
+    responseType: 'blob',
+  }),
 };
 
 export const templateApi = {
@@ -49,6 +96,7 @@ export const campaignApi = {
   disable: (id) => api.patch(`/campaigns/${id}/disable`),
   preview: (id, recruiterId) => api.get(`/campaigns/${id}/preview`, { params: { recruiterId } }),
   trigger: (id, recruiterId) => api.post(`/campaigns/${id}/trigger`, null, { params: { recruiterId } }),
+  triggerMultiple: (id, recruiterIds) => api.post(`/campaigns/${id}/trigger-multiple`, recruiterIds),
   triggerBatch: (id, limit) => api.post(`/campaigns/${id}/trigger-batch`, null, { params: { limit } }),
   triggerScheduler: () => api.post('/campaigns/trigger-scheduler'),
 };
@@ -64,6 +112,11 @@ export const historyApi = {
     });
     return api.get('/email-history', { params: cleanParams });
   },
+};
+
+export const profileApi = {
+  get: () => api.get('/candidate-profile'),
+  update: (data) => api.put('/candidate-profile', data),
 };
 
 export default api;
