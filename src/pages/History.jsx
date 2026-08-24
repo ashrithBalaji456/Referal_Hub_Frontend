@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { historyApi } from '../services/api';
+import { formatDateTime } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
 import CustomDatePicker from '../components/CustomDatePicker';
 import { 
@@ -207,7 +208,7 @@ export default function History({ showToast }) {
                           {isSuccess ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                           {isSuccess ? 'Success' : 'Failed'}
                         </span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {new Date(log.sentTimestamp).toLocaleString()}</span>
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatDateTime(log.sentTimestamp)}</span>
                       </div>
                     </div>
 

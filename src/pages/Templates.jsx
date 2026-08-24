@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { templateApi } from '../services/api';
+import { templateApi, profileApi } from '../services/api';
+import { formatDate } from '../utils/dateUtils';
 import { 
   Plus, 
   Edit, 
@@ -12,6 +13,7 @@ import {
 export default function Templates({ showToast }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [customVariables, setCustomVariables] = useState([]);
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,8 +37,21 @@ export default function Templates({ showToast }) {
     }
   };
 
+  const loadProfile = async () => {
+    try {
+      const res = await profileApi.get();
+      if (res.data && res.data.customFieldsJson) {
+        const parsed = JSON.parse(res.data.customFieldsJson);
+        setCustomVariables(Object.keys(parsed));
+      }
+    } catch (err) {
+      console.error('Failed to load profile for variables', err);
+    }
+  };
+
   useEffect(() => {
     loadTemplates();
+    loadProfile();
   }, []);
 
   const handleOpenAddModal = () => {
@@ -94,11 +109,28 @@ export default function Templates({ showToast }) {
   };
 
   const insertPlaceholder = (placeholder) => {
-    setFormData({
-      ...formData,
-      body: formData.body + placeholder
-    });
+    setFormData((prev) => ({
+      ...prev,
+      body: prev.body + placeholder
+    }));
   };
+
+  const standardPlaceholders = [
+    { label: 'Recruiter', code: '{{recruiterName}}' },
+    { label: 'Company', code: '{{companyName}}' },
+    { label: 'Candidate', code: '{{candidateName}}' },
+    { label: 'Job Role', code: '{{roleName}}' },
+    { label: 'Mail/Email', code: '{{mail}}' },
+    { label: 'LinkedIn', code: '{{linkedin}}' },
+    { label: 'GitHub', code: '{{github}}' },
+    { label: 'Phone', code: '{{phone}}' },
+    { label: 'Location', code: '{{location}}' },
+  ];
+
+  const customPlaceholders = customVariables.map(key => ({
+    label: key,
+    code: `{{${key}}}`
+  }));
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -163,8 +195,8 @@ export default function Templates({ showToast }) {
                   </div>
                 </div>
                 <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-900 mt-6 flex justify-between">
-                  <span>Created: {new Date(template.createdTimestamp).toLocaleDateString()}</span>
-                  <span>Updated: {new Date(template.updatedTimestamp).toLocaleDateString()}</span>
+                  <span>Created: {formatDate(template.createdTimestamp)}</span>
+                  <span>Updated: {formatDate(template.updatedTimestamp)}</span>
                 </div>
               </div>
             ))
@@ -175,7 +207,7 @@ export default function Templates({ showToast }) {
       {/* Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-slate-850 rounded-2xl max-w-2xl w-full shadow-2xl p-6 relative animate-slide-in">
+          <div className="bg-slate-950 border border-slate-850 rounded-2xl max-w-2xl w-full shadow-2xl p-6 relative animate-slide-in max-h-[90vh] flex flex-col">
             <button 
               onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 hover:bg-slate-900 p-1.5 rounded-lg text-slate-500 hover:text-slate-300"
@@ -183,14 +215,14 @@ export default function Templates({ showToast }) {
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex items-center gap-2.5 mb-6 border-b border-slate-900 pb-4">
+            <div className="flex items-center gap-2.5 mb-4 border-b border-slate-900 pb-3 shrink-0">
               <FileText className="h-5 w-5 text-purple-500" />
               <h3 className="text-lg font-bold text-white">
                 {currentTemplate ? 'Edit Email Template' : 'Add Email Template'}
               </h3>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 flex-1">
               <div>
                 <label className="text-xs font-semibold text-slate-400 block mb-1.5">Template Name</label>
                 <input 
@@ -218,19 +250,50 @@ export default function Templates({ showToast }) {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-xs font-semibold text-slate-400">Message Body</label>
-                  <div className="flex flex-wrap gap-1">
-                    {['{{recruiterName}}', '{{companyName}}', '{{candidateName}}', '{{roleName}}'].map((placeholder) => (
-                      <button
-                        key={placeholder}
-                        type="button"
-                        onClick={() => insertPlaceholder(placeholder)}
-                        className="text-[10px] px-2 py-1 rounded bg-slate-900 border border-slate-800 text-purple-400 hover:border-purple-500 hover:text-white transition-colors"
-                      >
-                        {placeholder}
-                      </button>
-                    ))}
-                  </div>
+                  <span className="text-[10px] text-slate-500">Click chips below to insert into message</span>
                 </div>
+
+                {/* Available Placeholders Bar */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-2 space-y-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block mb-1.5">Available Standard Placeholders</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {standardPlaceholders.map((item) => (
+                        <button
+                          key={item.code}
+                          type="button"
+                          onClick={() => insertPlaceholder(item.code)}
+                          title={`Insert ${item.label}`}
+                          className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-purple-300 hover:border-purple-500 hover:bg-purple-600/20 hover:text-white transition-all duration-150 font-mono shadow-sm flex items-center gap-1 cursor-pointer"
+                        >
+                          <span className="text-slate-400 text-[10px] font-sans">{item.label}:</span>
+                          <span className="font-semibold">{item.code}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {customPlaceholders.length > 0 && (
+                    <div className="pt-2 border-t border-slate-800/60">
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1.5">Your Custom Variables</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {customPlaceholders.map((item) => (
+                          <button
+                            key={item.code}
+                            type="button"
+                            onClick={() => insertPlaceholder(item.code)}
+                            title={`Insert custom variable ${item.label}`}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 hover:border-emerald-500 hover:bg-emerald-600/20 hover:text-white transition-all duration-150 font-mono shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="text-emerald-500 text-[10px] font-sans">Custom:</span>
+                            <span className="font-semibold">{item.code}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <textarea 
                   required
                   rows="8"
@@ -244,13 +307,11 @@ export default function Templates({ showToast }) {
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-900/50 border border-slate-800">
                 <Info className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-slate-400 leading-normal">
-                  The placeholders above are automatically replaced on dispatch. For example, 
-                  <strong> {'{{recruiterName}}'}</strong> compiles to the contact's name, and 
-                  <strong> {'{{roleName}}'}</strong> resolves to "Java Backend Developer" or "Spring Boot Developer" matching the recruiter's category.
+                  All placeholders above compile automatically when sending emails. Standard placeholders like <strong>{'{{mail}}'}</strong>, <strong>{'{{linkedin}}'}</strong>, <strong>{'{{candidateName}}'}</strong> resolve to your Candidate Profiler values, and custom variables resolve to your custom keys.
                 </p>
               </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-900 mt-6">
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-900 mt-4 shrink-0">
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}

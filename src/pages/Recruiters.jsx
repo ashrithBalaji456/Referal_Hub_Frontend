@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { recruiterApi, campaignApi } from '../services/api';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
 import { 
   Plus, 
@@ -246,7 +247,7 @@ export default function Recruiters({ showToast }) {
       `"${(r.company || '').replace(/"/g, '""')}"`,
       r.contactSet || 1,
       r.status || 'ACTIVE',
-      `"${r.lastContactedDate ? new Date(r.lastContactedDate).toLocaleDateString() : 'Never'}"`
+      `"${r.lastContactedDate ? formatDateTime(r.lastContactedDate) : 'Never'}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -446,7 +447,7 @@ export default function Recruiters({ showToast }) {
                       </td>
                       <td className="px-6 py-4 text-slate-400 text-xs">
                         {recruiter.lastContactedDate 
-                          ? new Date(recruiter.lastContactedDate).toLocaleDateString() 
+                          ? formatDateTime(recruiter.lastContactedDate) 
                           : 'Never contacted'
                         }
                       </td>

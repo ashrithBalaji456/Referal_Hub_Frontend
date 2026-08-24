@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { resumeApi } from '../services/api';
+import { formatDate } from '../utils/dateUtils';
 import { 
   FileUp, 
   Trash2, 
@@ -153,7 +154,7 @@ export default function Resumes({ showToast }) {
                       <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
                         <span>{(resume.fileSize / 1024).toFixed(1)} KB</span>
                         <span>•</span>
-                        <span>{new Date(resume.uploadedTimestamp).toLocaleDateString()}</span>
+                        <span>{formatDate(resume.uploadedTimestamp)}</span>
                       </div>
                     </div>
                   </div>
