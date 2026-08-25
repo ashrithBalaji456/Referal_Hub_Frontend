@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { templateApi, profileApi } from '../services/api';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 import { 
   Plus, 
   Edit, 
@@ -194,9 +194,9 @@ export default function Templates({ showToast }) {
                     </div>
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-900 mt-6 flex justify-between">
+                <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-900 mt-6 flex justify-between items-center">
                   <span>Created: {formatDate(template.createdTimestamp)}</span>
-                  <span>Updated: {formatDate(template.updatedTimestamp)}</span>
+                  <span>Updated: {formatDateTime(template.updatedTimestamp)}</span>
                 </div>
               </div>
             ))

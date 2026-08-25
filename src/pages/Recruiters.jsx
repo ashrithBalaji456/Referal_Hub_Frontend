@@ -12,7 +12,12 @@ import {
   UserPlus,
   Briefcase,
   Send,
-  Download
+  Download,
+  Globe,
+  Lock,
+  Inbox,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 
 export default function Recruiters({ showToast }) {
@@ -30,7 +35,14 @@ export default function Recruiters({ showToast }) {
     company: '',
     status: 'ACTIVE',
     contactSet: 1,
+    isPublic: true,
   });
+
+  // Waiting Recruiters State
+  const [waitingRecruiters, setWaitingRecruiters] = useState([]);
+  const [isWaitingModalOpen, setIsWaitingModalOpen] = useState(false);
+  const [selectedWaitingIds, setSelectedWaitingIds] = useState([]);
+  const [addingWaiting, setAddingWaiting] = useState(false);
 
   // Bulk Import state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -54,6 +66,9 @@ export default function Recruiters({ showToast }) {
       setLoading(true);
       const res = await recruiterApi.getAll();
       setRecruiters(res.data || []);
+
+      const waitingRes = await recruiterApi.getWaiting();
+      setWaitingRecruiters(waitingRes.data || []);
     } catch (err) {
       console.error(err);
       showToast('Failed to load recruiters', 'error');
@@ -91,6 +106,7 @@ export default function Recruiters({ showToast }) {
       company: '',
       status: 'ACTIVE',
       contactSet: 1,
+      isPublic: true,
     });
     setIsModalOpen(true);
   };
@@ -104,8 +120,88 @@ export default function Recruiters({ showToast }) {
       company: recruiter.company,
       status: recruiter.status,
       contactSet: recruiter.contactSet || 1,
+      isPublic: recruiter.isPublic !== undefined ? recruiter.isPublic : true,
     });
     setIsModalOpen(true);
+  };
+
+  const handleToggleSelectWaiting = (id) => {
+    setSelectedWaitingIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllWaiting = (checked) => {
+    if (checked) {
+      setSelectedWaitingIds(waitingRecruiters.map(r => r.id));
+    } else {
+      setSelectedWaitingIds([]);
+    }
+  };
+
+  const handleAddSelectedWaiting = async () => {
+    if (selectedWaitingIds.length === 0) return;
+    try {
+      setAddingWaiting(true);
+      await recruiterApi.addWaiting(selectedWaitingIds);
+      showToast(`Added ${selectedWaitingIds.length} recruiter(s) to your list`);
+      setSelectedWaitingIds([]);
+      setIsWaitingModalOpen(false);
+      loadRecruiters();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to add waiting recruiters', 'error');
+    } finally {
+      setAddingWaiting(false);
+    }
+  };
+
+  const handleAddAllWaiting = async () => {
+    if (waitingRecruiters.length === 0) return;
+    try {
+      setAddingWaiting(true);
+      await recruiterApi.addAllWaiting();
+      showToast(`Added all ${waitingRecruiters.length} waiting recruiter(s) to your list`);
+      setSelectedWaitingIds([]);
+      setIsWaitingModalOpen(false);
+      loadRecruiters();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to add all waiting recruiters', 'error');
+    } finally {
+      setAddingWaiting(false);
+    }
+  };
+
+  const handleDismissSingleWaiting = async (id) => {
+    try {
+      setAddingWaiting(true);
+      const res = await recruiterApi.dismissWaiting([id]);
+      setWaitingRecruiters(res.data || []);
+      setSelectedWaitingIds(prev => prev.filter(x => x !== id));
+      showToast('Recruiter dismissed from waiting list');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to dismiss recruiter', 'error');
+    } finally {
+      setAddingWaiting(false);
+    }
+  };
+
+  const handleDismissSelectedWaiting = async () => {
+    if (selectedWaitingIds.length === 0) return;
+    try {
+      setAddingWaiting(true);
+      const res = await recruiterApi.dismissWaiting(selectedWaitingIds);
+      setWaitingRecruiters(res.data || []);
+      showToast(`Dismissed ${selectedWaitingIds.length} recruiter(s)`);
+      setSelectedWaitingIds([]);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to dismiss recruiters', 'error');
+    } finally {
+      setAddingWaiting(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -321,6 +417,17 @@ export default function Recruiters({ showToast }) {
               <Send className="h-4 w-4" /> Send ASAP ({selectedIds.length})
             </button>
           )}
+          <button 
+            onClick={() => setIsWaitingModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:border-slate-700 text-slate-300 text-sm font-semibold transition-all duration-200 cursor-pointer relative"
+          >
+            <Inbox className="h-4 w-4 text-purple-400" /> Waiting Recruiters
+            {waitingRecruiters.length > 0 && (
+              <span className="ml-1 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                {waitingRecruiters.length}
+              </span>
+            )}
+          </button>
           <button 
             onClick={handleExportCsv}
             title={selectedIds.length > 0 ? `Export ${selectedIds.length} selected contacts` : (filterSet !== 'ALL' ? `Export Set ${filterSet} contacts` : 'Export all contacts')}
@@ -565,6 +672,41 @@ export default function Recruiters({ showToast }) {
                 />
               </div>
 
+              <div>
+                <label className="text-xs font-semibold text-slate-400 block mb-1.5">Directory Visibility</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({ ...formData, isPublic: true })}
+                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                      formData.isPublic 
+                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 font-semibold shadow-lg shadow-purple-500/5' 
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Globe className="h-4 w-4 text-purple-400" /> Master (Public)
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">Shared in Waiting List</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({ ...formData, isPublic: false })}
+                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                      !formData.isPublic 
+                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 font-semibold shadow-lg shadow-purple-500/5' 
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Lock className="h-4 w-4 text-purple-400" /> Private (Only Me)
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">Visible only to your account</span>
+                  </button>
+                </div>
+              </div>
+
 
 
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-900 mt-6">
@@ -726,6 +868,120 @@ export default function Recruiters({ showToast }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Waiting Recruiters Modal */}
+      {isWaitingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-850 rounded-2xl max-w-2xl w-full shadow-2xl p-6 relative animate-slide-in space-y-5 max-h-[90vh] flex flex-col">
+            <button 
+              onClick={() => setIsWaitingModalOpen(false)}
+              className="absolute top-4 right-4 hover:bg-slate-900 p-1.5 rounded-lg text-slate-500 hover:text-slate-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-2.5 border-b border-slate-900 pb-4">
+              <Inbox className="h-5 w-5 text-purple-500" />
+              <div>
+                <h3 className="text-lg font-bold text-white">Waiting Recruiters ({waitingRecruiters.length})</h3>
+                <p className="text-xs text-slate-400">Public contacts added by the community. Select contacts to add them to your active recruiters list.</p>
+              </div>
+            </div>
+
+            {waitingRecruiters.length === 0 ? (
+              <div className="p-8 text-center border border-slate-900 border-dashed rounded-xl text-slate-500 text-xs italic">
+                No waiting recruiters available. All public contacts have already been added to your list!
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto border border-slate-900 rounded-xl">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900/60 border-b border-slate-850 text-slate-400 font-semibold">
+                      <th className="p-3 w-10 text-center">
+                        <input 
+                          type="checkbox"
+                          checked={selectedWaitingIds.length === waitingRecruiters.length && waitingRecruiters.length > 0}
+                          onChange={(e) => handleSelectAllWaiting(e.target.checked)}
+                          className="accent-purple-600 rounded cursor-pointer"
+                        />
+                      </th>
+                      <th className="p-3">Recruiter</th>
+                      <th className="p-3">Company & Title</th>
+                      <th className="p-3">Added By</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-900">
+                    {waitingRecruiters.map((r) => (
+                      <tr key={r.id} className="hover:bg-slate-900/40 transition-colors">
+                        <td className="p-3 text-center">
+                          <input 
+                            type="checkbox"
+                            checked={selectedWaitingIds.includes(r.id)}
+                            onChange={() => handleToggleSelectWaiting(r.id)}
+                            className="accent-purple-600 rounded cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-white">{r.name}</div>
+                          <div className="text-slate-500 text-[10px]">{r.email}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="text-slate-300 font-medium">{r.company}</div>
+                          <div className="text-slate-500 text-[10px]">{r.title || 'N/A'}</div>
+                        </td>
+                        <td className="p-3 text-slate-400 font-mono text-[10px]">
+                          {r.addedByUsername || 'System'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDismissSingleWaiting(r.id)}
+                            title="Dismiss from waiting list"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-900 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {waitingRecruiters.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-900">
+                <span className="text-xs text-slate-400">
+                  {selectedWaitingIds.length} of {waitingRecruiters.length} selected
+                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    onClick={handleDismissSelectedWaiting}
+                    disabled={selectedWaitingIds.length === 0 || addingWaiting}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-red-950/30 hover:border-red-900/50 border border-slate-800 text-slate-400 hover:text-red-400 text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    <UserX className="h-4 w-4" /> Dismiss Selected ({selectedWaitingIds.length})
+                  </button>
+                  <button
+                    onClick={handleAddAllWaiting}
+                    disabled={addingWaiting}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Add All ({waitingRecruiters.length})
+                  </button>
+                  <button
+                    onClick={handleAddSelectedWaiting}
+                    disabled={selectedWaitingIds.length === 0 || addingWaiting}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-purple-500/20 cursor-pointer"
+                  >
+                    <UserCheck className="h-4 w-4" /> Add Selected ({selectedWaitingIds.length})
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

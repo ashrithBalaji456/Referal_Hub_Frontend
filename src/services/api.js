@@ -63,6 +63,12 @@ export const recruiterApi = {
     params: setNumber ? { setNumber } : {},
     responseType: 'blob',
   }),
+  exportCsvUrl: (setNumber) => `${API_BASE_URL}/recruiters/export${setNumber ? `?setNumber=${setNumber}` : ''}`,
+  getWaiting: () => api.get('/recruiters/waiting'),
+  addWaiting: (ids) => api.post('/recruiters/add-waiting', ids),
+  addAllWaiting: () => api.post('/recruiters/add-all-waiting'),
+  dismissWaiting: (ids) => api.post('/recruiters/dismiss-waiting', ids),
+  dismissAllWaiting: () => api.post('/recruiters/dismiss-all-waiting'),
 };
 
 export const templateApi = {

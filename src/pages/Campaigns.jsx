@@ -239,13 +239,18 @@ export default function Campaigns({ showToast }) {
     label: `${r.originalFilename} ${r.active ? '(Active)' : ''}`
   }));
 
+  const availableSets = Array.from(
+    new Set([
+      ...recruiters.map(r => r.contactSet || 1),
+      ...(formData.targetSet ? [parseInt(formData.targetSet)] : [])
+    ])
+  ).filter(s => Boolean(s) && !isNaN(s)).sort((a, b) => a - b);
+
+  const setsToDisplay = availableSets.length > 0 ? availableSets : [1];
+
   const targetSetOptions = [
     { value: '', label: 'All Sets (Irrespective)' },
-    { value: '1', label: 'Set 1' },
-    { value: '2', label: 'Set 2' },
-    { value: '3', label: 'Set 3' },
-    { value: '4', label: 'Set 4' },
-    { value: '5', label: 'Set 5' }
+    ...setsToDisplay.map(set => ({ value: set.toString(), label: `Set ${set}` }))
   ];
 
   const batchOptions = [
