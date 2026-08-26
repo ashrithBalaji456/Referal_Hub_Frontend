@@ -48,6 +48,7 @@ export default function Recruiters({ showToast }) {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importSetNumber, setImportSetNumber] = useState(2);
+  const [importIsPublic, setImportIsPublic] = useState(true);
   const [importing, setImporting] = useState(false);
 
   // Filters state
@@ -302,6 +303,7 @@ export default function Recruiters({ showToast }) {
     const fd = new FormData();
     fd.append('file', importFile);
     fd.append('setNumber', importSetNumber);
+    fd.append('isPublic', importIsPublic);
 
     try {
       setImporting(true);
@@ -767,6 +769,41 @@ export default function Recruiters({ showToast }) {
                   onChange={(e) => setImportSetNumber(parseInt(e.target.value) || 1)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-200 focus:border-purple-600 transition-colors"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 block mb-1.5">Directory Visibility</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setImportIsPublic(true)}
+                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                      importIsPublic 
+                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 font-semibold shadow-lg shadow-purple-500/5' 
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Globe className="h-4 w-4 text-purple-400" /> Master (Public)
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">Shared in Waiting List</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setImportIsPublic(false)}
+                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                      !importIsPublic 
+                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 font-semibold shadow-lg shadow-purple-500/5' 
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Lock className="h-4 w-4 text-purple-400" /> Private (Only Me)
+                    </div>
+                    <span className="text-[10px] text-slate-500 leading-tight">Visible only to your account</span>
+                  </button>
+                </div>
               </div>
 
               <div className="p-3.5 bg-slate-905 border border-slate-900 rounded-xl text-[10px] text-slate-400 leading-normal">

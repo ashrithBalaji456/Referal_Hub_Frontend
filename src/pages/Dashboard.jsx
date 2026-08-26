@@ -162,10 +162,17 @@ export default function Dashboard({ setActiveTab, showToast }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-900 pb-3">
                 <span className="text-sm text-slate-500">Scheduler Status</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                  Active
-                </span>
+                {stats.activeCampaign !== 'None' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-850 text-slate-400 border border-slate-800">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                    Inactive (No Campaign)
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between border-b border-slate-900 pb-3">
                 <span className="text-sm text-slate-500 flex items-center gap-2"><Clock className="h-4 w-4" /> Schedule</span>
@@ -180,13 +187,19 @@ export default function Dashboard({ setActiveTab, showToast }) {
           <div className="mt-6 space-y-3">
             <button
               onClick={handleTriggerScheduler}
-              disabled={triggering}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-all duration-200 disabled:opacity-50 cursor-pointer"
+              disabled={triggering || stats.activeCampaign === 'None'}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                stats.activeCampaign === 'None'
+                  ? 'bg-slate-900 text-slate-500 border border-slate-800 cursor-not-allowed'
+                  : 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer'
+              } disabled:opacity-50`}
             >
-              {triggering ? 'Initiating...' : 'Run Campaign Outreach Now'}
+              {triggering ? 'Initiating...' : stats.activeCampaign === 'None' ? 'No Active Campaign Configured' : 'Run Campaign Outreach Now'}
             </button>
             <div className="text-[10px] text-slate-500 text-center italic">
-              Triggers outreach immediately to all eligible active contacts.
+              {stats.activeCampaign === 'None'
+                ? 'Create and enable a campaign sequence in Campaigns tab to start automated outreach.'
+                : 'Triggers outreach immediately to all eligible active contacts.'}
             </div>
           </div>
         </div>
